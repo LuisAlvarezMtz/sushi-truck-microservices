@@ -1,0 +1,129 @@
+## ------------------------
+## Maven
+## ------------------------
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+## ------------------------
+## IntelliJ IDEA
+## ------------------------
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+## ------------------------
+## Eclipse (por si algún día lo usas o algún colaborador)
+## ------------------------
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+## ------------------------
+## VS Code
+## ------------------------
+.vscode/
+
+## ------------------------
+## NetBeans
+## ------------------------
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+## ------------------------
+## Java
+## ------------------------
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+## ------------------------
+## Logs
+## ------------------------
+*.log
+logs/
+spring.log
+
+## ------------------------
+## Variables de entorno / secretos
+## ------------------------
+.env
+.env.local
+*.env
+application-local.yaml
+application-local.yml
+application-local.properties
+
+## ------------------------
+## Docker
+## ------------------------
+docker-compose.override.yml
+
+## ------------------------
+## Sistema Operativo
+## ------------------------
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+## ------------------------
+## Testcontainers
+## ------------------------
+.testcontainers.properties
+
+## ------------------------
+## Node (si en algún momento agregas frontend)
+## ------------------------
+node_modules/
+npm-debug.log*
+
+## ------------------------
+## Otros
+## ------------------------
+*.tmp
+*.bak
+*.orig
+HELP.md
