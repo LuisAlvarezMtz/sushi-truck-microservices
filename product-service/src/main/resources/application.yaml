@@ -1,3 +1,14 @@
 spring:
   application:
     name: product-service
+  mongodb:
+    uri: mongodb://${MONGO_USER:change}:${MONGO_PASSWORD:change}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/product-db?authSource=admin
+  threads:
+    virtual:
+      enabled: true
+  web:
+    error:
+      include-message: always
+      include-stacktrace: never
+server:
+  port: 8080
