@@ -7,11 +7,11 @@ import com.luisalvarez.orderservice.mapper.OrderMapper;
 import com.luisalvarez.orderservice.model.Order;
 import com.luisalvarez.orderservice.repository.OrderRepository;
 import com.luisalvarez.orderservice.service.OrderService;
+import com.luisalvarez.orderservice.service.client.InventoryClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,7 +23,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
-    private final WebClient.Builder webClientBuilder;
+    private final InventoryClient inventoryClient;
 
     @Override
     @Transactional
@@ -38,18 +38,11 @@ public class OrderServiceImpl implements OrderService {
             Integer quantity = item.getQuantity();
 
             try {
-                webClientBuilder.build().put()
-                        .uri("http://localhost:8081/api/v1/inventory/reduce/" + sku,
-                                uriBuilder ->
-                                        uriBuilder.queryParam("quantity", quantity).build())
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
+                inventoryClient.reduceStock(sku, quantity);
             } catch (Exception e) {
                 log.error("Error to reduce stock to product {}: {}", sku, e.getMessage());
                 throw new IllegalArgumentException("Could not process the order");
             }
-
         }
 
         order.setOrderNumber(UUID.randomUUID().toString());
