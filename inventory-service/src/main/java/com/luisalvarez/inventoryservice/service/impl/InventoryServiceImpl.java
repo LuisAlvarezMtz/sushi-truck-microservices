@@ -2,6 +2,7 @@ package com.luisalvarez.inventoryservice.service.impl;
 
 import com.luisalvarez.inventoryservice.dto.InventoryRequestDto;
 import com.luisalvarez.inventoryservice.dto.InventoryResponseDto;
+import com.luisalvarez.inventoryservice.exception.InsufficientStockException;
 import com.luisalvarez.inventoryservice.exception.ResourceAlreadyExistsException;
 import com.luisalvarez.inventoryservice.exception.ResourceNotFoundException;
 import com.luisalvarez.inventoryservice.mapper.InventoryMapper;
@@ -77,5 +78,18 @@ public class InventoryServiceImpl implements InventoryService {
 
         inventoryRepository.delete(inventory);
         log.info("Inventory deleted with ID: {}", inventory.getId());
+    }
+
+    @Override
+    @Transactional
+    public void reduceStock(String sku, Integer quantity) {
+        Inventory inventory = inventoryRepository.findBySku(sku)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory", "sku", sku));
+        if(inventory.getQuantityAvailable()<quantity){
+            throw new InsufficientStockException(sku, quantity, inventory.getQuantityAvailable());
+        }
+
+        inventory.setQuantityAvailable(inventory.getQuantityAvailable()-quantity);
+        inventoryRepository.save(inventory);
     }
 }
