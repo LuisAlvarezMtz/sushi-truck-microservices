@@ -18,7 +18,7 @@ out/
 !**/src/test/**/out/
 
 ## ------------------------
-## Eclipse (por si algún día lo usas o algún colaborador)
+## Eclipse
 ## ------------------------
 .apt_generated
 .classpath
@@ -115,7 +115,7 @@ $RECYCLE.BIN/
 .testcontainers.properties
 
 ## ------------------------
-## Node (si en algún momento agregas frontend)
+## Node
 ## ------------------------
 node_modules/
 npm-debug.log*
@@ -127,3 +127,4 @@ npm-debug.log*
 *.bak
 *.orig
 HELP.md
+config-data
