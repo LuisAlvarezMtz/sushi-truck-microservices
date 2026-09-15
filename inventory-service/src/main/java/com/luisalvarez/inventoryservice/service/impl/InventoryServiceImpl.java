@@ -11,6 +11,8 @@ import com.luisalvarez.inventoryservice.repository.InventoryRepository;
 import com.luisalvarez.inventoryservice.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,10 +21,13 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@RefreshScope
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final InventoryMapper mapper;
+    @Value("${inventory.allow-backorders:false}")
+    private boolean allowBackOrders;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,6 +69,10 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public boolean isInStock(String sku, Integer quantity) {
+        if(allowBackOrders){
+            log.warn("Back orders mood active: Authorizing stock to sku {}", sku);
+            return true;
+        }
         Inventory inventory = inventoryRepository.findBySku(sku).orElseThrow(()->
                 new ResourceNotFoundException("Inventory", "sku", sku));
 
