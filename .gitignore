@@ -128,3 +128,4 @@ npm-debug.log*
 *.orig
 HELP.md
 config-data
+.run/
