@@ -23,17 +23,16 @@ public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity serverHttpSecurity) {
         serverHttpSecurity.csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .authorizeExchange(authorizeExchangeSpec -> authorizeExchangeSpec
+                .authorizeExchange(auth -> auth
                         .pathMatchers("/eureka/**").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/v1/products/¨**").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/v1/inventory/¨**").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/inventory/**").permitAll()
 
-                        .pathMatchers("/api/v1/products/**").hasRole(Role.ADMIN.name())
-                        .pathMatchers("/api/v1/orders/**").hasRole(Role.ADMIN.name())
+                        .pathMatchers(HttpMethod.POST, "/api/v1/orders/**").hasAnyRole(Role.USER.name(), Role.ADMIN.name())
+                        .pathMatchers(HttpMethod.GET, "/api/v1/orders/**").hasAnyRole(Role.USER.name(), Role.ADMIN.name())
+                        .pathMatchers("/api/v1/orders/**").hasRole(Role.ADMIN.name())   // PUT, DELETE, etc.
 
-                        .pathMatchers(HttpMethod.POST, "/api/v1/orders/").hasRole(Role.USER.name())
-                        .pathMatchers("/api/v1/orders/**").hasRole(Role.ADMIN.name())
-
+                        .pathMatchers("/api/v1/products/**").hasRole(Role.ADMIN.name()) // POST, PUT, DELETE de productos
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 ->
@@ -46,16 +45,16 @@ public class SecurityConfig {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
 
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-                    Map<String, Object> realmAccess = (Map<String, Object>) jwt.getClaims().get("realm_access");
+            Map<String, Object> realmAccess = (Map<String, Object>) jwt.getClaims().get("realm_access");
 
-                    if (realmAccess == null || realmAccess.isEmpty()) {
-                        return Collections.emptyList();
-                    }
+            if (realmAccess == null || realmAccess.isEmpty()) {
+                return Collections.emptyList();
+            }
 
-                    Collection<String> roles = (Collection<String>) realmAccess.get("roles");
+            Collection<String> roles = (Collection<String>) realmAccess.get("roles");
 
-                    return roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                            .collect(Collectors.toList());
+            return roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                    .collect(Collectors.toList());
         });
 
         return new ReactiveJwtAuthenticationConverterAdapter(converter);
