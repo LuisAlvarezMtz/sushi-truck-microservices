@@ -10,7 +10,6 @@ import com.luisalvarez.orderservice.service.OrderService;
 import com.luisalvarez.orderservice.service.client.InventoryClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
-import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,10 +17,8 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -35,66 +32,50 @@ public class OrderServiceImpl implements OrderService {
     @Value("${order.enabled:true}")
     private boolean ordersEnabled;
 
-    public CompletableFuture<OrderResponse> fallbackMethod
-            (OrderRequest orderRequest, String userId, Throwable throwable) {
-        return CompletableFuture.supplyAsync(() -> {
-                    log.error("Circuit braker activated, cause: {}", throwable.getMessage());
-                    throw new RuntimeException("Inventory Service doest not working. Try later");
-        });
-
+    public OrderResponse fallbackMethod(OrderRequest orderRequest, String userId, Throwable throwable) {
+        log.error("Circuit braker activated, cause: {}", throwable.getMessage());
+        throw new RuntimeException("Inventory Service doest not working. Try later");
     }
 
     @Override
     @Transactional
     @CircuitBreaker(name = "inventory", fallbackMethod = "fallbackMethod")
     @Retry(name = "inventory")
-    @TimeLimiter(name = "inventory")
-    public CompletableFuture<OrderResponse> placeOrder(OrderRequest orderRequest, String userId) {
+    public OrderResponse placeOrder(OrderRequest orderRequest, String userId) {
+        if(!ordersEnabled){
+            log.warn("Order rejected: unable service to config");
+            throw  new RuntimeException("Orders Service is in maintenance now. Try later");
+        }
 
-        long startTime = System.currentTimeMillis();
+        log.info("Placing new order");
 
-        return CompletableFuture.supplyAsync(() -> {
-            if(!ordersEnabled){
-                log.warn("Order rejected: unable service to config");
-                throw  new RuntimeException("Orders Service is in maintenance now. Try later");
+        Order order = orderMapper.toOrder(orderRequest);
+
+        order.setUserId(userId);
+
+        for(var item: order.getOrderLineItemsList()){
+            String sku = item.getSku();
+            Integer quantity = item.getQuantity();
+
+            try {
+                inventoryClient.reduceStock(sku, quantity);
+            } catch (Exception e) {
+                log.error("Error to reduce stock to product {}: {}", sku, e.getMessage());
+                throw new IllegalArgumentException("Could not process the order");
             }
+        }
 
-            log.info("Placing new order");
+        order.setOrderNumber(UUID.randomUUID().toString());
 
-            Order order = orderMapper.toOrder(orderRequest);
+        Order savedOrder = orderRepository.save(order);
 
-            order.setUserId(userId);
+        log.info(
+                "Order successfully placed with id: {} and items: {}",
+                savedOrder.getId(),
+                savedOrder.getOrderLineItemsList().size()
+        );
 
-            for(var item: order.getOrderLineItemsList()){
-                String sku = item.getSku();
-                Integer quantity = item.getQuantity();
-
-                try {
-                    inventoryClient.reduceStock(sku, quantity);
-                } catch (Exception e) {
-                    log.error("Error to reduce stock to product {}: {}", sku, e.getMessage());
-                    throw new IllegalArgumentException("Could not process the order");
-                }
-            }
-
-            order.setOrderNumber(UUID.randomUUID().toString());
-
-            long totalTime = System.currentTimeMillis() - startTime;
-            if (totalTime>3000){
-                log.warn("timeout : ({} ms)", totalTime);
-                throw  new RuntimeException("Timeout exceeded");
-            }
-
-            Order savedOrder = orderRepository.save(order);
-
-            log.info(
-                    "Order successfully placed with id: {} and items: {}",
-                    savedOrder.getId(),
-                    savedOrder.getOrderLineItemsList().size()
-            );
-
-            return orderMapper.toOrderResponse(savedOrder);
-        });
+        return orderMapper.toOrderResponse(savedOrder);
     }
 
     @Override
