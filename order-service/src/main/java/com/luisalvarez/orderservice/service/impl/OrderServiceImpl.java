@@ -8,6 +8,8 @@ import com.luisalvarez.orderservice.model.Order;
 import com.luisalvarez.orderservice.repository.OrderRepository;
 import com.luisalvarez.orderservice.service.OrderService;
 import com.luisalvarez.orderservice.service.client.InventoryClient;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,8 +32,15 @@ public class OrderServiceImpl implements OrderService {
     @Value("${order.enabled:true}")
     private boolean ordersEnabled;
 
+    public OrderResponse fallbackMethod(OrderRequest orderRequest, String userId, Throwable throwable) {
+        log.error("Circuit braker activated, cause: {}", throwable.getMessage());
+        throw new RuntimeException("Inventory Service doest not working. Try later");
+    }
+
     @Override
     @Transactional
+    @CircuitBreaker(name = "inventory", fallbackMethod = "fallbackMethod")
+    @Retry(name = "inventory")
     public OrderResponse placeOrder(OrderRequest orderRequest, String userId) {
         if(!ordersEnabled){
             log.warn("Order rejected: unable service to config");
