@@ -2,6 +2,7 @@ package com.luisalvarez.orderservice.service.impl;
 
 import com.luisalvarez.orderservice.dto.OrderRequest;
 import com.luisalvarez.orderservice.dto.OrderResponse;
+import com.luisalvarez.orderservice.event.OrderPlacedEvent;
 import com.luisalvarez.orderservice.exception.ResourceNotFoundException;
 import com.luisalvarez.orderservice.mapper.OrderMapper;
 import com.luisalvarez.orderservice.model.Order;
@@ -12,6 +13,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
@@ -28,9 +30,10 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
-    private final InventoryClient inventoryClient;
+//    private final InventoryClient inventoryClient;
     @Value("${order.enabled:true}")
     private boolean ordersEnabled;
+    private final RabbitTemplate rabbitTemplate;
 
     public OrderResponse fallbackMethod(OrderRequest orderRequest, String userId, Throwable throwable) {
         log.error("Circuit braker activated, cause: {}", throwable.getMessage());
@@ -39,8 +42,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    @CircuitBreaker(name = "inventory", fallbackMethod = "fallbackMethod")
-    @Retry(name = "inventory")
     public OrderResponse placeOrder(OrderRequest orderRequest, String userId) {
         if(!ordersEnabled){
             log.warn("Order rejected: unable service to config");
@@ -53,18 +54,6 @@ public class OrderServiceImpl implements OrderService {
 
         order.setUserId(userId);
 
-        for(var item: order.getOrderLineItemsList()){
-            String sku = item.getSku();
-            Integer quantity = item.getQuantity();
-
-            try {
-                inventoryClient.reduceStock(sku, quantity);
-            } catch (Exception e) {
-                log.error("Error to reduce stock to product {}: {}", sku, e.getMessage());
-                throw new IllegalArgumentException("Could not process the order");
-            }
-        }
-
         order.setOrderNumber(UUID.randomUUID().toString());
 
         Order savedOrder = orderRepository.save(order);
@@ -74,6 +63,21 @@ public class OrderServiceImpl implements OrderService {
                 savedOrder.getId(),
                 savedOrder.getOrderLineItemsList().size()
         );
+
+        List<OrderPlacedEvent.OrderItemEvent> orderItems = order.getOrderLineItemsList().stream()
+                .map(item -> new OrderPlacedEvent.OrderItemEvent(
+                        item.getSku(),
+                        item.getPrice().toString(),
+                        item.getQuantity()
+                )).toList();
+
+        OrderPlacedEvent event = new OrderPlacedEvent(
+                savedOrder.getOrderNumber(), orderRequest.email(), orderItems
+        );
+
+        rabbitTemplate.convertAndSend("order-events", "order.placed", event);
+
+        log.info("Order sent to rabbit mq, ordern number: {}", savedOrder.getOrderNumber());
 
         return orderMapper.toOrderResponse(savedOrder);
     }
