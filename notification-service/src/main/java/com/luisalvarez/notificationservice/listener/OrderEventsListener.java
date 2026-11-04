@@ -21,7 +21,6 @@ public class OrderEventsListener {
             try {
 
                 SimpleMailMessage message = new SimpleMailMessage();
-                message.setFrom("eljhonson834@gmail.com");
                 message.setTo(event.email());
                 message.setSubject("Order confirmed- "+event.orderNumber());
                 message.setText("Esta es una prueba de email");
