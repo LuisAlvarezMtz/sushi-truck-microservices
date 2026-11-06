@@ -17,44 +17,36 @@ public class OrderEventsListener {
     private final JavaMailSender mailSender;
 
     @RabbitListener(queues = "notification-queue")
-    public void handleOrderConfirmedEvent(OrderConfirmedEvent event){
+    public void handleOrderConfirmedEvent(OrderConfirmedEvent event) {
 
         log.info("Order confirmed, order number: {}", event.orderNumber());
 
-            try {
+        throw new RuntimeException("Simulated error: Server offline");
 
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setTo(event.email());
-                message.setSubject("Order confirmed- "+event.orderNumber());
-                message.setText("Esta es una prueba de email");
-
-                mailSender.send(message);
-
-                log.info("Sending email to: {}", event.email());
-                log.info("Email sent to the order number: {}", event.orderNumber());
-            }catch (Exception e){
-                log.error("Error to send email: {}", e.getMessage());
-            }
+//        SimpleMailMessage message = new SimpleMailMessage();
+//        message.setTo(event.email());
+//        message.setSubject("Order confirmed- " + event.orderNumber());
+//        message.setText("Esta es una prueba de email");
+//
+//        mailSender.send(message);
+//
+//        log.info("Sending email to: {}", event.email());
+//        log.info("Email sent to the order number: {}", event.orderNumber());
     }
 
     @RabbitListener(queues = "notification-queue")
-    public void handleOrderCancelledEvent(OrderCancelledEvent event){
+    public void handleOrderCancelledEvent(OrderCancelledEvent event) {
 
         log.info("Order cancelled, order number: {}", event.orderNumber());
 
-        try {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(event.email());
+        message.setSubject("Order cancelled - " + event.orderNumber());
+        message.setText("This is a test");
 
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(event.email());
-            message.setSubject("Order cancelled - "+event.orderNumber());
-            message.setText("This is a test");
+        mailSender.send(message);
 
-            mailSender.send(message);
-
-            log.info("Sending email to: {}", event.email());
-            log.info("Email sent to the order number: {}", event.orderNumber());
-        }catch (Exception e){
-            log.error("Error to send email: {}", e.getMessage());
-        }
+        log.info("Sending email to: {}", event.email());
+        log.info("Email sent to the order number: {}", event.orderNumber());
     }
 }
