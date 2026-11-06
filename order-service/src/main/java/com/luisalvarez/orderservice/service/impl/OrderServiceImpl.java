@@ -117,4 +117,18 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.delete(order);
     }
+
+    @Override
+    @Transactional
+    public void updateOrderStatus(String orderNumber, OrderStatus newStatus) {
+
+        orderRepository.findByOrderNumber(orderNumber).ifPresentOrElse(
+                order -> {
+                    order.setStatus(newStatus);
+                    orderRepository.save(order);
+                    log.info("Status updated to order number: {}", orderNumber);
+                },
+                () -> log.error("Order number: {} not found", orderNumber)
+        );
+    }
 }
