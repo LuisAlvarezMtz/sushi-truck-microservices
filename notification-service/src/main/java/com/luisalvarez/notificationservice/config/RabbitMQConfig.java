@@ -25,7 +25,7 @@ public class RabbitMQConfig {
         Map<String, Class<?>> idClassMapping = new HashMap<>();
 
         idClassMapping.put(
-                "com.luisalvarez.inventoryservice.event.OrderPlacedEvent",
+                "com.luisalvarez.inventoryservice.event.OrderConfirmedEvent",
                 OrderConfirmedEvent.class
         );
 

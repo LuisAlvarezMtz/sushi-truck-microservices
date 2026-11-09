@@ -9,11 +9,10 @@ import com.luisalvarez.orderservice.model.Order;
 import com.luisalvarez.orderservice.model.OrderStatus;
 import com.luisalvarez.orderservice.repository.OrderRepository;
 import com.luisalvarez.orderservice.service.OrderService;
-import com.luisalvarez.orderservice.service.client.InventoryClient;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
+import com.luisalvarez.orderservice.service.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -31,15 +30,12 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
+    private final OutboxService outboxService;
+
 //    private final InventoryClient inventoryClient;
     @Value("${order.enabled:true}")
     private boolean ordersEnabled;
     private final RabbitTemplate rabbitTemplate;
-
-    public OrderResponse fallbackMethod(OrderRequest orderRequest, String userId, Throwable throwable) {
-        log.error("Circuit braker activated, cause: {}", throwable.getMessage());
-        throw new RuntimeException("Inventory Service doest not working. Try later");
-    }
 
     @Override
     @Transactional
@@ -52,13 +48,9 @@ public class OrderServiceImpl implements OrderService {
         log.info("Placing new order");
 
         Order order = orderMapper.toOrder(orderRequest);
-
         order.setUserId(userId);
-
         order.setOrderNumber(UUID.randomUUID().toString());
-
         order.setStatus(OrderStatus.PLACED);
-
         Order savedOrder = orderRepository.save(order);
 
         log.info(
@@ -78,7 +70,16 @@ public class OrderServiceImpl implements OrderService {
                 savedOrder.getOrderNumber(), orderRequest.email(), orderItems
         );
 
-        rabbitTemplate.convertAndSend("order-events", "order.placed", event);
+        boolean sentToRabbit = false;
+        try {
+            rabbitTemplate.convertAndSend("order-events", "order.placed", event);
+            sentToRabbit = true;
+            log.info("Message sent immediately to RabbitMQ: {}", savedOrder.getOrderNumber());
+        } catch (AmqpException e) {
+            log.error("RabbitMQ fall. Outbox save your order: {}", savedOrder.getOrderNumber());
+        }
+
+        outboxService.saveOrderPlacedEvent(event, sentToRabbit);
 
         log.info("Order sent to rabbit mq, ordern number: {}", savedOrder.getOrderNumber());
 
