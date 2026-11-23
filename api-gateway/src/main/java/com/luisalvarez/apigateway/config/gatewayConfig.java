@@ -12,13 +12,13 @@ public class gatewayConfig {
         return builder.routes()
                 .route("product-service", r -> r
                         .path("/api/v1/products/**")
-                        .uri("lb://PRODUCT-SERVICE"))
+                        .uri("http://product-service:8081"))
                 .route("inventory-service", r -> r
                         .path("/api/v1/inventory/**")
-                        .uri("lb://INVENTORY-SERVICE"))
+                        .uri("http://inventory-service:8083"))
                 .route("order-service", r -> r
                         .path("/api/v1/orders/**")
-                        .uri("lb://ORDER-SERVICE"))
+                        .uri("http://order-service:8082"))
                 .build();
     }
 }

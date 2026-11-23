@@ -1,0 +1,27 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+    gateway:
+      routes:
+        - id: product-service
+          uri: http://product-service:8081
+          predicates:
+            - Path=/api/v1/products/**
+        - id: inventory-service
+          uri: http://inventory-service:8083
+          predicates:
+            - Path=/api/v1/inventory/**
+        - id: order-service
+          uri: http://order-service:8082
+          predicates:
+            - Path=/api/v1/orders/**
+  rabbitmq:
+    host: rabbitmq
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8084/realms/sushitruck-realm
